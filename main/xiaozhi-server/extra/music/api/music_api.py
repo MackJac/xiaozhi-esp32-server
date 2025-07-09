@@ -2,9 +2,6 @@ import requests
 import json
 from typing import Dict, List, Optional
 from config.logger import setup_logging
-import os
-import tempfile
-import shutil
 
 TAG = __name__
 logger = setup_logging()
@@ -100,49 +97,3 @@ class MusicAPI:
             "try_listen": music_data.get("tryListen", False),  # 是否是试听
             "duration": music_data.get("duration", 0)  # 歌曲时长
         }
-
-    async def play_music(self, music_url: str, music_id: str, music_name: str, conn):
-        if self.downloader.is_cached(music_id):
-            cache_path = self.downloader.get_cache_path(music_id)
-            await self._play_local_file(conn, str(cache_path), music_name)
-        else:
-            await self._download_and_play(conn, music_url, music_id, music_name)
-
-
-class OnlineMusicPlayer:
-    def __init__(self):
-        self._stream_file = None
-        self._stream_file_path = None
-        self._stream_started = False
-
-    async def _play_audio_chunk(self, conn, chunk: bytes):
-        if self._stream_file is None:
-            fd, self._stream_file_path = tempfile.mkstemp(suffix=".opus", prefix="stream_music_")
-            self._stream_file = os.fdopen(fd, "wb")
-            self._stream_started = False
-
-        self._stream_file.write(chunk)
-        self._stream_file.flush()
-
-        if not self._stream_started:
-            from core.providers.tts.dto.dto import TTSMessageDTO, SentenceType, ContentType
-            conn.tts.tts_text_queue.put(
-                TTSMessageDTO(
-                    sentence_id=conn.sentence_id,
-                    sentence_type=SentenceType.MIDDLE,
-                    content_type=ContentType.FILE,
-                    content_file=self._stream_file_path,
-                )
-            )
-            self._stream_started = True
-
-    def _close_stream_file(self):
-        if self._stream_file:
-            self._stream_file.close()
-            self._stream_file = None
-            self._stream_started = False
-
-    def _move_stream_to_cache(self, cache_path):
-        if self._stream_file_path:
-            shutil.move(self._stream_file_path, cache_path)
-            self._stream_file_path = None

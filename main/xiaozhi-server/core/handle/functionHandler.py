@@ -8,6 +8,7 @@ from plugins_func.register import (
     DeviceTypeRegistry,
 )
 from plugins_func.functions.hass_init import append_devices_to_prompt
+from plugins_func.functions.online_music import last_function_was_play_music, music_play_success
 
 TAG = __name__
 
@@ -22,7 +23,7 @@ class FunctionHandler:
         self.register_config_functions()
         self.functions_desc = self.function_registry.get_all_function_desc()
         self.finish_init = True
-    
+
     def upload_functions_desc(self):
         self.functions_desc = self.function_registry.get_all_function_desc()
 
@@ -62,6 +63,10 @@ class FunctionHandler:
 
     def handle_llm_function_call(self, conn, function_call_data):
         try:
+            global last_function_was_play_music, music_play_success
+            # 重置状态
+            last_function_was_play_music = False
+            music_play_success = False
             function_name = function_call_data["name"]
             funcItem = self.get_function(function_name)
             if not funcItem:
